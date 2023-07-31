@@ -1,4 +1,5 @@
 import graphene
+from authentication.models import Profile
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from graphene_django.types import DjangoObjectType
@@ -7,6 +8,12 @@ from graphene_django.types import DjangoObjectType
 class UserType(DjangoObjectType):
     class Meta:
         model = User
+        fields = "__all__"
+
+
+class UserProfile(DjangoObjectType):
+    class Meta:
+        model = Profile
         fields = "__all__"
 
 
@@ -44,5 +51,32 @@ class UpdateUser(graphene.Mutation):
         return UpdateUser(user=None)
 
 
+class CreateUserInput(graphene.InputObjectType):
+    id = graphene.ID()
+    first_name = graphene.String()
+    last_name = graphene.String()
+    email = graphene.String()
+    password = graphene.String()
+    username = graphene.String()
+
+
+class CreateUser(graphene.Mutation):
+    user = graphene.Field(UserType)
+    profile = graphene.Field(UserProfile)
+
+    class Arguments:
+        user_data = CreateUserInput(required=True)
+
+    @staticmethod
+    def mutate(self, info, user_data=None):
+        user = User(first_name=user_data.first_name, last_name=user_data.last_name,
+                                   email=user_data.email, username=user_data.username)
+        user.set_password(user_data.password)
+        user.save()
+        profile = Profile.objects.get(user=user.id)
+        return CreateUser(user=user, profile=profile)
+
+
 class Mutation(graphene.ObjectType):
     UpdateUser = UpdateUser.Field()
+    CreateUser = CreateUser.Field()
