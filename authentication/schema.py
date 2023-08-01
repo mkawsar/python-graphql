@@ -1,7 +1,7 @@
 import graphene
 from authentication.models import Profile
 from django.contrib.auth.models import User
-from django.contrib.auth import get_user_model
+from graphql_jwt.decorators import login_required
 from graphene_django.types import DjangoObjectType
 
 
@@ -21,9 +21,11 @@ class Query(graphene.ObjectType):
     users = graphene.List(UserType)
     me = graphene.Field(UserType, user_id=graphene.Int())
 
-    def resolve_user(self, info, user_id):
+    @login_required
+    def resolve_me(self, info, user_id):
         return User.objects.get(pk=user_id)
 
+    @login_required
     def resolve_users(self, info, **kwargs):
         return User.objects.all()
 
@@ -70,7 +72,7 @@ class CreateUser(graphene.Mutation):
     @staticmethod
     def mutate(self, info, user_data=None):
         user = User(first_name=user_data.first_name, last_name=user_data.last_name,
-                                   email=user_data.email, username=user_data.username)
+                    email=user_data.email, username=user_data.username)
         user.set_password(user_data.password)
         user.save()
         profile = Profile.objects.get(user=user.id)
